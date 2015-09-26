@@ -1,0 +1,4 @@
+BeautifulSoup
+Image==1.4.1
+requests==2.7.0
+Pillow==2.9.0
