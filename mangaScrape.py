@@ -8,9 +8,9 @@ from PIL import Image
 from StringIO import StringIO
 from requests.exceptions import ConnectionError
 
-http_proxy  = "http://<username>:<password>@172.31.1.4:8080"
-https_proxy = "https://<username>:<password>@172.31.1.4:8080"
-ftp_proxy   = "ftp://<username>:<password>@172.31.1.4:8080"
+http_proxy  = "http://<username>:<password>@<proxy_address>:<proxy_port>"
+https_proxy = "https://<username>:<password>@<proxy_address>:<proxy_port>"
+ftp_proxy   = "ftp://<username>:<password>@<proxy_address>:<proxy_port>"
 
 proxyDict = { 
               "http"  : http_proxy, 
