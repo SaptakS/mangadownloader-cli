@@ -32,27 +32,27 @@ def findNextURL(imageUrl):
     return imageUrl.parent["href"]
 
 
-def saveImg(data):
+def saveImg(data, base_host, base_url, base_path, image_title):
     maxval = 0
     maxurl = ""
     imglinks = data.findAll("img")
-    check_link = BASE_HOST.split("//")[1]
+    check_link = base_host.split("//")[1]
     if len(check_link.split('.')) > 2:
         check_link = check_link.split('.')[1] + "." + check_link.split('.')[2]
     for link in imglinks:
-        if check_link in str(link['src']) and sm(None, str(link['src']), BASE_URL.replace("http", "")).ratio() > maxval:
-            maxval = sm(None, str(link['src']), BASE_URL).ratio()
+        if check_link in str(link['src']) and sm(None, str(link['src']), base_url.replace("http", "")).ratio() > maxval:
+            maxval = sm(None, str(link['src']), base_url).ratio()
             maxl = link
             maxurl = link['src']
     if maxurl == '':
         for link in imglinks:
-            if sm(None, str(link['src']), BASE_URL.replace("http", "")).ratio() > maxval:
-                maxval = sm(None, str(link['src']), BASE_URL).ratio()
+            if sm(None, str(link['src']), base_url.replace("http", "")).ratio() > maxval:
+                maxval = sm(None, str(link['src']), base_url).ratio()
                 maxl = link
                 maxurl = link['src']
 
     if "http" not in str(maxurl):
-        maxurl = BASE_HOST.split("//")[0] + maxurl
+        maxurl = base_host.split("//")[0] + maxurl
 
     try:
         image = requests.get(maxurl, proxies=proxyDict)
@@ -61,7 +61,7 @@ def saveImg(data):
         print "Error        "
         exit(0)
 
-    file = open(os.path.join(BASE_PATH, "%s.jpg") % IMAGE_TITLE, 'wb')
+    file = open(os.path.join(base_path, "%s.jpg") % image_title, 'wb')
     try:
         Image.open(StringIO(image.content)).save(file, 'JPEG')
     except IOError, e:
@@ -73,11 +73,11 @@ def saveImg(data):
     return maxl
 
 
-def linkData(url):
+def linkData(base_url):
     try:
-        #req = urllib2.Request(BASE_URL, headers=hdr)
+        #req = urllib2.Request(base_url, headers=hdr)
         #resp = urllib2.urlopen(req).read()
-        r = requests.get(BASE_URL, proxies=proxyDict)
+        r = requests.get(base_url, proxies=proxyDict)
 
         data = bs("".join(r.text))
 
@@ -86,31 +86,33 @@ def linkData(url):
         print e.fp.read()
 
 
+def main(base_url, base_path, total_img):
+    base_host = re.split(r"/", base_url)[0] + "//" + re.split(r"/", base_url)[2]
+    #print base_host
+    image_title = 0
+
+    if not os.path.exists(base_path):
+        os.makedirs(base_path)
+
+    imageUrl = saveImg(linkData(base_url), base_host, base_url, base_path, image_title)
+    #print imageUrl.parent['href']
+
+    ctr = 0
+    while ctr < total_img - 1:
+        image_title = image_title + 1
+        next_rel = findNextURL(imageUrl)
+        #print next_rel
+        if not "://" in next_rel:
+            if next_rel.startswith("/"):
+                base_url = base_host + next_rel
+            else:
+                base_url = re.sub(r"\w+.html", next_rel, base_url)
+        print "Next page is", base_url
+        imageUrl = saveImg(linkData(base_url), base_host, base_url, base_path, image_title)
+        ctr = ctr + 1
+    print "Total Pages Downloaded: ", (ctr + 1)
+
 BASE_PATH = raw_input("Enter Name of the Folder to save in:")
 BASE_URL = raw_input("Enter the First Page URL:")
-BASE_HOST = re.split(r"/", BASE_URL)[0] + "//" + re.split(r"/", BASE_URL)[2]
-BASE_CHECK_LINK = BASE_URL
-#print BASE_HOST
 TOTAL_IMG = int(raw_input("Enter total images to download:"))
-IMAGE_TITLE = 0
-
-if not os.path.exists(BASE_PATH):
-    os.makedirs(BASE_PATH)
-
-imageUrl = saveImg(linkData(BASE_URL))
-#print imageUrl.parent['href']
-
-ctr = 0
-while ctr < TOTAL_IMG - 1:
-    IMAGE_TITLE = IMAGE_TITLE + 1
-    next_rel = findNextURL(imageUrl)
-    #print next_rel
-    if not "://" in next_rel:
-        if next_rel.startswith("/"):
-            BASE_URL = BASE_HOST + next_rel
-        else:
-            BASE_URL = re.sub(r"\w+.html", next_rel, BASE_URL)
-    print "Next page is", BASE_URL
-    imageUrl = saveImg(linkData(BASE_URL))
-    ctr = ctr + 1
-print "Total Pages Downloaded: ", (ctr + 1)
+main(BASE_URL, BASE_PATH, TOTAL_IMG)
