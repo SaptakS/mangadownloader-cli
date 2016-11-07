@@ -9,7 +9,7 @@ from StringIO import StringIO
 from requests.exceptions import ConnectionError
 
 
-proxy = "http://<username>:<password>@<host>:<port>"
+proxy = "http://172.31.1.4:8080"
 proxyDict = {
               "http": proxy,
               "https": proxy,
@@ -28,6 +28,7 @@ hdr = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.11 (KHTML,
 
 
 def findNextURL(imageUrl):
+    print imageUrl.parent["href"]
 
     return imageUrl.parent["href"]
 
@@ -107,6 +108,8 @@ def main(base_url, base_path, total_img):
                 base_url = base_host + next_rel
             else:
                 base_url = re.sub(r"\w+.html", next_rel, base_url)
+        else:
+            base_url = next_rel
         print "Next page is", base_url
         imageUrl = saveImg(linkData(base_url), base_host, base_url, base_path, image_title)
         ctr = ctr + 1
