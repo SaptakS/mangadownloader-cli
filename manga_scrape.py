@@ -1,8 +1,6 @@
 import os
 import requests
 import re
-import urllib.request as url_request
-import urllib.error as url_error
 
 from io import BytesIO
 from bs4 import BeautifulSoup as bs
@@ -18,18 +16,22 @@ from PIL import Image
 #              "ftp": proxy
 #            }
 
-#proxy_support = url_request.ProxyHandler(proxyDict)
-# opener = url_request.build_opener(proxy_support)
-
-opener = url_request.build_opener()
-url_request.install_opener(opener)
-hdr = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.11 (KHTML, like Gecko) Chrome/23.0.1271.64 Safari/537.11',
-       'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+hdr = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) '
+                     'AppleWebKit/537.11 (KHTML, like Gecko) '
+                     'Chrome/23.0.1271.64 Safari/537.11',
+       'Accept': 'text/html,application/xhtml+xml,'
+                 'application/xml;q=0.9,*/*;q=0.8',
        'Accept-Charset': 'ISO-8859-1,utf-8;q=0.7,*;q=0.3',
        'Accept-Encoding': 'none',
        'Accept-Language': 'en-US,en;q=0.8',
        'Connection': 'keep-alive'}
 
+def getsize(url):
+    if not url.startswith("data:"):
+        response = requests.head(url)
+        if 'content-length' in response.headers:
+            return int(response.headers['content-length'])
+    return 0
 
 def findNextURL(imageUrl):
 
@@ -40,20 +42,17 @@ def saveImg(data, base_host, base_url, base_path, image_title):
     maxval = 0
     maxurl = ""
     imglinks = data.findAll("img")
-    check_link = base_host.split("//")[1]
-    if len(check_link.split('.')) > 2:
-        check_link = check_link.split('.')[1] + "." + check_link.split('.')[2]
     for link in imglinks:
-        if check_link in str(link['src']) and sm(None, str(link['src']), base_url.replace("http", "")).ratio() > maxval:
-            maxval = sm(None, str(link['src']), base_url).ratio()
+        img_size = getsize(link['src'].strip())
+        sequence_match_ratio = 0
+        if 'alt' in link.attrs:
+            sequence_match_ratio = sm(None,
+                                  str(link['alt']),
+                                  base_url.replace("http", "")).ratio()
+        if sequence_match_ratio > maxval and img_size > 99999:
+            maxval = sm(None, str(link['alt']), base_url).ratio()
             maxl = link
-            maxurl = link['src']
-    if maxurl == '':
-        for link in imglinks:
-            if sm(None, str(link['src']), base_url.replace("http", "")).ratio() > maxval:
-                maxval = sm(None, str(link['src']), base_url).ratio()
-                maxl = link
-                maxurl = link['src']
+            maxurl = link['src'].strip()
 
     if "http" not in str(maxurl):
         maxurl = base_host.split("//")[0] + maxurl
@@ -83,39 +82,34 @@ def saveImg(data, base_host, base_url, base_path, image_title):
 
 def linkData(base_url):
     try:
-        #req = urllib2.Request(base_url, headers=hdr)
-        #resp = urllib2.urlopen(req).read()
         # uncomment if proxy settings
         # r = requests.get(base_url, proxies=proxyDict)
 
         # comment if proxy settings
         r = requests.get(base_url)
 
-        data = bs("".join(r.text))
+        data = bs("".join(r.text), "html.parser")
 
         return data
-    except url_error as e:
-        print(e.fp.read())
+    except ConnectionError:
+        print("Link read error")
 
 
 def main(base_url, base_path, total_img):
     base_host = re.split(r"/", base_url)[0] + "//" + re.split(r"/", base_url)[2]
-    #base_path = re.split(r"/", base_url)[3] + "_"+re.split(r"/", base_url)[4]
 
-    #print base_host
     image_title = 0
 
     if not os.path.exists(base_path):
         os.makedirs(base_path)
 
-    imageUrl = saveImg(linkData(base_url), base_host, base_url, base_path, image_title)
-    #print imageUrl.parent['href']
+    imageUrl = saveImg(linkData(base_url), base_host,
+                       base_url, base_path, image_title)
 
     ctr = 0
     while ctr < total_img - 1:
         image_title = image_title + 1
         next_rel = findNextURL(imageUrl)
-        #print next_rel
         if not "://" in next_rel:
             if next_rel.startswith("/"):
                 base_url = base_host + next_rel
@@ -125,11 +119,12 @@ def main(base_url, base_path, total_img):
             base_url = next_rel
 
         print("Next page is", base_url)
-        imageUrl = saveImg(linkData(base_url), base_host, base_url, base_path, image_title)
+        imageUrl = saveImg(linkData(base_url), base_host,
+                           base_url, base_path, image_title)
         ctr = ctr + 1
     print("Total Pages Downloaded: ", (ctr + 1))
 
-BASE_PATH = raw_input("Enter Name of the Folder to save in:")
-BASE_URL = raw_input("Enter the First Page URL:")
-TOTAL_IMG = int(raw_input("Enter total images to download:"))
+BASE_PATH = input("Enter Name of the Folder to save in:")
+BASE_URL = input("Enter the First Page URL:")
+TOTAL_IMG = int(input("Enter total images to download:"))
 main(BASE_URL, BASE_PATH, TOTAL_IMG)
